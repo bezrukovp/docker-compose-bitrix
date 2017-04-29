@@ -1,0 +1,107 @@
+version: '2'
+
+services:
+
+### Applications Code Container #############################
+
+    applications:
+        image: tianon/true
+        volumes:
+            - $APPLICATION_VOLUME_PATH:/var/www
+
+
+### Workspace Utilities Container ###########################
+
+    workspace:
+        build:
+            context: ./workspace
+            args:
+                - INSTALL_XDEBUG=$INSTALL_XDEBUG
+                - INSTALL_NODE=true
+                - INSTALL_YARN=true
+                - COMPOSER_GLOBAL_INSTALL=true
+                - INSTALL_WORKSPACE_SSH=true
+                - PUID=1000
+                - PGID=1000
+                - NODE_VERSION=stable
+                - YARN_VERSION=latest
+                - TZ=$TZ
+        volumes_from:
+            - applications
+        extra_hosts:
+            - "dockerhost:$COMPOSE_DOCKER_HOST"
+        networks:
+            - default
+        tty: true
+
+
+### PHP-FPM Container #######################################
+
+    php-fpm:
+        restart: always
+        build:
+            context: ./php-fpm
+            args:
+                - INSTALL_XDEBUG=$INSTALL_XDEBUG
+                - INSTALL_SOAP=true
+                - INSTALL_ZIP_ARCHIVE=true
+                - INSTALL_BCMATH=false
+                - INSTALL_PHPREDIS=false
+                - INSTALL_MEMCACHED=true
+                - INSTALL_OPCACHE=true
+                - INSTALL_EXIF=true
+            dockerfile: Dockerfile-71
+        environment:
+            - PHP_IDE_CONFIG=serverName=$VIRTUAL_HOST_MAIN
+        volumes_from:
+            - applications
+        expose:
+            - "9000"
+        links:
+            - workspace
+            - redis
+        extra_hosts:
+            - "dockerhost:$COMPOSE_DOCKER_HOST"
+        networks:
+            - default
+
+
+### Nginx Server Container ##################################
+
+    nginx:
+        restart: always
+        build:
+            context: ./nginx
+            args:
+                - PHP_UPSTREAM=php-fpm
+        volumes_from:
+            - applications
+        volumes:
+            - ./nginx/bx:/etc/nginx/bx
+            - ./nginx/certs:/etc/nginx/certs
+            - ./nginx/conf.d:/etc/nginx/conf.d
+            - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+            - nginx_logs:/var/log/nginx
+        links:
+            - php-fpm
+        environment:
+            - VIRTUAL_HOST=$VIRTUAL_HOST
+
+
+### Memcached Container #####################################
+
+    memcached:
+        build: ./memcached
+        volumes:
+            - memcached:/var/lib/memcached
+        ports:
+            - "11211:11211"
+        links:
+            - php-fpm
+
+
+### Volumes Setup ###########################################
+
+volumes:
+    memcached:
+        driver: "local"
