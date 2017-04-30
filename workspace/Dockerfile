@@ -17,15 +17,35 @@ ENV LC_CTYPE=ru_RU.UTF-8
 ENV LANG=ru_RU.UTF-8
 ENV TERM xterm
 
-# Add the "PHP 7" ppa
-RUN apt-get install -y software-properties-common && \
-    add-apt-repository -y ppa:ondrej/php
+
+#####################################
+# Non-Root User:
+#####################################
+
+# Add a non-root user to prevent files being created with root permissions on host machine.
+ARG PUID=1000
+ARG PGID=1000
+RUN groupadd -g $PGID developer && \
+    useradd -u $PUID -g developer -m developer -s /bin/bash && \
+    echo "developer:$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13)" | chpasswd
+
+#####################################
+# Set Timezone
+#####################################
+
+ARG TZ=UTC
+ENV TZ ${TZ}
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 #
 #--------------------------------------------------------------------------
 # Software's Installation
 #--------------------------------------------------------------------------
 #
+
+# Add the "PHP 7" ppa
+RUN apt-get install -y software-properties-common && \
+    add-apt-repository -y ppa:ondrej/php
 
 # Install "PHP Extentions", "libraries", "Software's"
 RUN apt-get update && \
@@ -39,9 +59,6 @@ RUN apt-get update && \
         php7.1-mbstring \
         php7.1-mcrypt \
         php7.1-mysql \
-        php7.1-pgsql \
-        php7.1-sqlite \
-        php7.1-sqlite3 \
         php7.1-zip \
         php7.1-bcmath \
         php7.1-memcached \
@@ -53,47 +70,113 @@ RUN apt-get update && \
         libssl-dev \
         libxml2-dev \
         xz-utils \
-        libsqlite3-dev \
-        sqlite3 \
-        git \
-        curl \
-        vim \
-        nano \
-        postgresql-client \
-    && apt-get clean
-
-
-#####################################
-# Non-Root User:
-#####################################
-
-# Add a non-root user to prevent files being created with root permissions on host machine.
-ARG PUID=1000
-ARG PGID=1000
-RUN groupadd -g $PGID developer && \
-    useradd -u $PUID -g developer -m developer -s /bin/bash && \
-    echo "developer:$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13)" | chpasswd
-
-
-#####################################
-# Set Timezone
-#####################################
-
-ARG TZ=UTC
-ENV TZ ${TZ}
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-
-
-#####################################
-# Additional base apps
-#####################################
-
-RUN apt-get update && \
-    apt-get install -y apt-utils sudo mc rsync \
+        vim nano mc \
+        apt-utils sudo \
+        curl rsync wget git \
         iputils-ping telnet dnsutils tcpdump htop && \
     echo '#developer' > /etc/sudoers.d/developer && \
     echo 'developer ALL = NOPASSWD: ALL' >> /etc/sudoers.d/developer && \
     usermod -aG sudo developer
+
+
+#####################################
+# PHP Memcached:
+#####################################
+
+ARG INSTALL_MEMCACHED=false
+RUN if [ ${INSTALL_MEMCACHED} = true ]; then \
+    # Install the php memcached extension
+    curl -L -o /tmp/memcached.tar.gz "https://github.com/php-memcached-dev/php-memcached/archive/php7.tar.gz" \
+    && mkdir -p memcached \
+    && tar -C memcached -zxvf /tmp/memcached.tar.gz --strip 1 \
+    && ( \
+        cd memcached \
+        && phpize \
+        && ./configure \
+        && make -j$(nproc) \
+        && make install \
+    ) \
+    && rm -r memcached \
+    && rm /tmp/memcached.tar.gz \
+    && docker-php-ext-enable memcached \
+;fi
+
+
+#####################################
+# Exif:
+#####################################
+
+ARG INSTALL_EXIF=false
+RUN if [ ${INSTALL_EXIF} = true ]; then \
+    # Enable Exif PHP extentions requirements
+    docker-php-ext-install exif \
+;fi
+
+
+#####################################
+# Opcache:
+#####################################
+
+ARG INSTALL_OPCACHE=false
+RUN if [ ${INSTALL_OPCACHE} = true ]; then \
+    docker-php-ext-install opcache \
+;fi
+
+# Copy opcache configration
+COPY ./opcache.ini /usr/local/etc/php/conf.d/opcache.ini
+
+
+#####################################
+# Mysqli Modifications:
+#####################################
+
+ARG INSTALL_MYSQLI=false
+RUN if [ ${INSTALL_MYSQLI} = true ]; then \
+    docker-php-ext-install mysqli \
+;fi
+
+
+#####################################
+# Human Language and Character Encoding Support:
+#####################################
+
+ARG INSTALL_INTL=false
+RUN if [ ${INSTALL_INTL} = true ]; then \
+    # Install intl and requirements
+    apt-get -y update && \
+    apt-get install -y zlib1g-dev libicu-dev g++ && \
+    docker-php-ext-configure intl && \
+    docker-php-ext-install intl \
+;fi
+
+
+#####################################
+# xDebug:
+#####################################
+
+ARG INSTALL_XDEBUG=false
+RUN if [ ${INSTALL_XDEBUG} = true ]; then \
+    # Install the xdebug extension
+    pecl install xdebug && \
+    docker-php-ext-enable xdebug \
+;fi
+
+# Copy xdebug configration for remote debugging
+COPY ./xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
+
+
+#####################################
+# Blackfire:
+#####################################
+
+ARG INSTALL_BLACKFIRE=false
+RUN if [ ${INSTALL_XDEBUG} = false -a ${INSTALL_BLACKFIRE} = true ]; then \
+    version=$(php -r "echo PHP_MAJOR_VERSION.PHP_MINOR_VERSION;") \
+    && curl -A "Docker" -o /tmp/blackfire-probe.tar.gz -D - -L -s https://blackfire.io/api/v1/releases/probe/php/linux/amd64/$version \
+    && tar zxpf /tmp/blackfire-probe.tar.gz -C /tmp \
+    && mv /tmp/blackfire-*.so $(php -r "echo ini_get('extension_dir');")/blackfire.so \
+    && printf "extension=blackfire.so\nblackfire.agent_socket=tcp://blackfire:8707\n" > $PHP_INI_DIR/conf.d/blackfire.ini \
+;fi
 
 
 #####################################
@@ -116,24 +199,6 @@ RUN if [ ${INSTALL_WORKSPACE_SSH} = true ]; then \
     chmod 644 /home/developer/.ssh/authorized_keys /home/developer/.ssh/id_rsa.pub && \
     chmod 400 /home/developer/.ssh/id_rsa \
 ;fi
-
-
-#####################################
-# xDebug:
-#####################################
-
-ARG INSTALL_XDEBUG=false
-RUN if [ ${INSTALL_XDEBUG} = true ]; then \
-    # Load the xdebug extension only with phpunit commands
-    apt-get update && \
-    apt-get install -y --force-yes php7.1-xdebug && \
-    sed -i 's/^/;/g' /etc/php/7.1/cli/conf.d/20-xdebug.ini && \
-    if [ ${INSTALL_WORKSPACE_SSH} = true ]; then \
-        echo "GatewayPorts=clientspecified" >> /etc/ssh/sshd_config \
-    ;fi \
-;fi
-# ADD for REMOTE debugging
-COPY ./xdebug.ini /etc/php/7.1/cli/conf.d/xdebug.ini
 
 
 #####################################
