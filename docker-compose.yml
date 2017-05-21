@@ -21,7 +21,7 @@ services:
                 - PUID=1000
                 - PGID=1000
                 - INSTALL_MEMCACHED=true
-                - INSTALL_EXIF=false
+                - INSTALL_EXIF=true
                 - INSTALL_OPCACHE=true
                 - INSTALL_MYSQLI=true
                 - INSTALL_INTL=false
@@ -55,7 +55,6 @@ services:
                 - INSTALL_MEMCACHED=true
                 - INSTALL_OPCACHE=true
                 - INSTALL_EXIF=true
-            dockerfile: Dockerfile-71
         environment:
             - PHP_IDE_CONFIG=serverName=$VIRTUAL_HOST_MAIN
         volumes_from:
@@ -64,7 +63,7 @@ services:
             - "9000"
         links:
             - workspace
-            - redis
+            - memcached
         extra_hosts:
             - "dockerhost:$COMPOSE_DOCKER_HOST"
         networks:
@@ -101,12 +100,12 @@ services:
             - memcached:/var/lib/memcached
         ports:
             - "11211:11211"
-        links:
-            - php-fpm
 
 
 ### Volumes Setup ###########################################
 
 volumes:
     memcached:
+        driver: "local"
+    nginx_logs:
         driver: "local"

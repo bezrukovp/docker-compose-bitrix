@@ -61,7 +61,6 @@ RUN apt-get update && \
         php7.1-mysql \
         php7.1-zip \
         php7.1-bcmath \
-        php7.1-memcached \
         php7.1-gd \
         php7.1-dev \
         pkg-config \
@@ -85,20 +84,7 @@ RUN apt-get update && \
 
 ARG INSTALL_MEMCACHED=false
 RUN if [ ${INSTALL_MEMCACHED} = true ]; then \
-    # Install the php memcached extension
-    curl -L -o /tmp/memcached.tar.gz "https://github.com/php-memcached-dev/php-memcached/archive/php7.tar.gz" \
-    && mkdir -p memcached \
-    && tar -C memcached -zxvf /tmp/memcached.tar.gz --strip 1 \
-    && ( \
-        cd memcached \
-        && phpize \
-        && ./configure \
-        && make -j$(nproc) \
-        && make install \
-    ) \
-    && rm -r memcached \
-    && rm /tmp/memcached.tar.gz \
-    && docker-php-ext-enable memcached \
+    apt-get install -y php7.1-memcached \
 ;fi
 
 
@@ -108,8 +94,7 @@ RUN if [ ${INSTALL_MEMCACHED} = true ]; then \
 
 ARG INSTALL_EXIF=false
 RUN if [ ${INSTALL_EXIF} = true ]; then \
-    # Enable Exif PHP extentions requirements
-    docker-php-ext-install exif \
+    apt-get install -y php7.1-exif \
 ;fi
 
 
@@ -119,7 +104,7 @@ RUN if [ ${INSTALL_EXIF} = true ]; then \
 
 ARG INSTALL_OPCACHE=false
 RUN if [ ${INSTALL_OPCACHE} = true ]; then \
-    docker-php-ext-install opcache \
+    apt-get install -y php7.1-opcache \
 ;fi
 
 # Copy opcache configration
@@ -132,7 +117,7 @@ COPY ./opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 
 ARG INSTALL_MYSQLI=false
 RUN if [ ${INSTALL_MYSQLI} = true ]; then \
-    docker-php-ext-install mysqli \
+    apt-get install -y php7.1-mysqli \
 ;fi
 
 
@@ -144,9 +129,7 @@ ARG INSTALL_INTL=false
 RUN if [ ${INSTALL_INTL} = true ]; then \
     # Install intl and requirements
     apt-get -y update && \
-    apt-get install -y zlib1g-dev libicu-dev g++ && \
-    docker-php-ext-configure intl && \
-    docker-php-ext-install intl \
+    apt-get install -y zlib1g-dev libicu-dev g++ php7.1-intl \
 ;fi
 
 
@@ -156,9 +139,7 @@ RUN if [ ${INSTALL_INTL} = true ]; then \
 
 ARG INSTALL_XDEBUG=false
 RUN if [ ${INSTALL_XDEBUG} = true ]; then \
-    # Install the xdebug extension
-    pecl install xdebug && \
-    docker-php-ext-enable xdebug \
+    apt-get install -y php7.1-xdebug \
 ;fi
 
 # Copy xdebug configration for remote debugging
