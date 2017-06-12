@@ -2,18 +2,33 @@ FROM php:7.1-fpm
 
 MAINTAINER Pavel Bezrukov <bezrukov.ps@gmail.com>
 
-RUN DEBIAN_FRONTEND=noninteractive
-RUN locale-gen ru_RU.UTF-8
 
-ENV LANGUAGE=ru_RU.UTF-8
-ENV LC_ALL=ru_RU.UTF-8
-ENV LC_CTYPE=ru_RU.UTF-8
-ENV LANG=ru_RU.UTF-8
+ENV DEBIAN_FRONTEND noninteractive
 ENV TERM xterm
 
-# Add the "PHP 7" ppa
-RUN apt-get install -y software-properties-common && \
-    add-apt-repository -y ppa:ondrej/php
+#####################################
+# Set Location & Timezone
+#####################################
+
+ARG lang=ru_RU.UTF-8
+ARG language=ru_RU:ru
+ARG tz=Europe/Moscow
+
+RUN apt-get update && apt-get install -y apt-utils locales && \
+    locale-gen --purge $lang en_US.UTF-8 && \
+    sed -i -e "s/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/" /etc/locale.gen && \
+    sed -i -e "s/# $lang UTF-8/$lang UTF-8/" /etc/locale.gen && \
+    echo -e "LANG=\"$lang\"\nLANGUAGE=\"$language\"\n" > /etc/default/locale && \
+    dpkg-reconfigure --frontend=noninteractive locales && \
+    update-locale LANG=$lang && \
+    ln -sf /usr/share/zoneinfo/$tz /etc/localtime && \
+    echo "$tz" > /etc/timezone && \
+    dpkg-reconfigure -f noninteractive tzdata
+
+ENV LANG ${lang}
+ENV LANGUAGE ${language}
+ENV LC_ALL ${lang}
+ENV LC_CTYPE=${lang}
 
 #
 #--------------------------------------------------------------------------
@@ -22,9 +37,12 @@ RUN apt-get install -y software-properties-common && \
 #
 
 # Install "PHP Extentions", "libraries", "Software's"
-RUN apt-get update && \
-    apt-get install -y --allow-downgrades --allow-remove-essential \
-        --allow-change-held-packages \
+RUN apt-get install -y lsb-release software-properties-common python-software-properties \
+    apt-transport-https ca-certificates wget curl git vim nano mc && \
+    wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg && \
+    echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/php.list && \
+    apt-get update -yqq && \
+    apt-get install -y \
         php7.1-cli \
         php7.1-common \
         php7.1-curl \
@@ -49,11 +67,6 @@ RUN apt-get update && \
         xz-utils \
         libsqlite3-dev \
         sqlite3 \
-        git \
-        curl \
-        vim \
-        nano \
-        mc \
         postgresql-client \
     && apt-get clean
 
@@ -70,16 +83,8 @@ ARG PUID=1000
 ARG PGID=1000
 RUN groupadd -g $PGID bitrix && \
     useradd -u $PUID -g bitrix -m bitrix -s /bin/bash && \
-    echo "developer:$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13)" | chpasswd
+    echo "bitrix:$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13)" | chpasswd
 
-
-#####################################
-# Set Timezone
-#####################################
-
-ARG TZ=UTC
-ENV TZ ${TZ}
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 #####################################
 # Set msmtp
@@ -87,11 +92,11 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN apt-get install -q -y msmtp && \
     mkdir -p /var/log/msmtp && \
-    chown www-data:adm /var/log/msmtp && \
+    chown bitrix:adm /var/log/msmtp && \
     mkdir -p /var/log/msmtp && \
-    chown www-data:adm /var/log/msmtp && \
+    chown bitrix:adm /var/log/msmtp
 
-COPY ./msmtprc /etc/msmtprc
+ADD ./msmtprc /etc/msmtprc
 RUN sed -i 's/host mail/host '$(python -c 'import socket; print socket.gethostbyname("mail")')'/g' /etc/msmtprc
 
 

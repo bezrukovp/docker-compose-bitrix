@@ -36,26 +36,30 @@ RUN groupadd -g $PGID bitrix && \
 # Install base apps & Nginx Build:
 #####################################
 
-COPY ./sources.list.d/* /etc/apt/sources.list.d/
+ADD ./sources.list.d/* /etc/apt/sources.list.d/
 
-RUN apt-get update && apt-get install -y sudo git curl vim nano mc rsync tar \
-    iputils-ping telnet dnsutils tcpdump htop \
+RUN apt-get update && apt-get install -y sudo git curl vim nano mc rsync tar wget \
+    iputils-ping telnet dnsutils tcpdump htop debian-keyring \
     dpkg-dev build-essential zlib1g-dev libpcre3 libpcre3-dev && \
-    mkdir -p ~/workspace/ && \
-    cd ~/workspace/ && \
+    mkdir -p /opt/nginx/ && \
+    cd /opt/nginx/ && \
     wget https://github.com/wandenberg/nginx-push-stream-module/archive/${NGINX_PUSH_STREAM_MODULE_VERSION}.tar.gz && \
     tar -zxf ${NGINX_PUSH_STREAM_MODULE_VERSION}.tar.gz && \
-    git clone https://github.com/openresty/headers-more-nginx-module.git && \
-    apt-get source nginx && \
-    apt-get build-dep nginx && \
+    git clone https://github.com/openresty/headers-more-nginx-module.git
+RUN wget https://nginx.ru/keys/nginx_signing.key && apt-key add nginx_signing.key && rm nginx_signing.key && \
+    echo "install key" && \
+    apt-get update && echo "success update" && apt-get source nginx && echo "success source" && \
+    apt-get build-dep -y nginx && \
     cd nginx-*/debian && \
-    sed -i.orig 's#--with-cc-opt# --add-module=../../nginx-push-stream-module-${NGINX_PUSH_STREAM_MODULE_VERSION} --add-module=../../headers-more-nginx-module --with-cc-opt#g' rules && cd .. && \
-    dpkg-buildpackage -b && \
-    dpkg -i *.deb && \
+    sed -i.orig 's#--with-cc-opt# --add-module=/opt/nginx/nginx-push-stream-module-${NGINX_PUSH_STREAM_MODULE_VERSION} --add-module=/opt/nginx/headers-more-nginx-module --with-cc-opt#g' rules && cd .. && \
+    dpkg-buildpackage -b && cd .. && \
+    dpkg -i nginx_*.deb && \
+    ln -sf /dev/stdout /var/log/nginx/access.log && \
+    ln -sf /dev/stderr /var/log/nginx/error.log && \
     nginx -V
 
-COPY ./bitrixenv_error/ /var/www/bitrixenv_error/
+ADD ./bitrixenv_error/ /var/www/bitrixenv_error/
 
-CMD ["nginx"]
+CMD ["nginx", "-g", "daemon off;"]
 
 EXPOSE 80 443 8893 8894 8895

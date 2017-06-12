@@ -1,0 +1,12 @@
+version: '2'
+services:
+  workspace:
+    scale: 1
+  php-fpm:
+    scale: 1
+  nginx:
+    scale: 1
+  memcached:
+    scale: 1
+
+

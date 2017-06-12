@@ -2,20 +2,13 @@ version: '2'
 
 services:
 
-### Applications Code Container #############################
-
-    applications:
-        image: tianon/true
-        volumes:
-            - $APPLICATION_VOLUME_PATH:/home/bitrix/www
-
 
 ### Workspace Utilities Container ###########################
 
     workspace:
         restart: always
         build:
-            context: ./workspace
+            context: workspace
             args:
                 - TZ=$TZ
                 - PUID=1000
@@ -33,8 +26,10 @@ services:
                 - NODE_VERSION=stable
                 - INSTALL_YARN=true
                 - YARN_VERSION=latest
-        volumes_from:
-            - applications
+        labels:
+            io.rancher.container.pull_image: always
+        volumes:
+            - $APPLICATION_VOLUME_PATH:/home/bitrix/www
         networks:
             - default
         tty: true
@@ -45,7 +40,7 @@ services:
     php-fpm:
         restart: always
         build:
-            context: ./php-fpm
+            context: php-fpm
             args:
                 - INSTALL_XDEBUG=$INSTALL_XDEBUG
                 - INSTALL_SOAP=true
@@ -55,10 +50,12 @@ services:
                 - INSTALL_MEMCACHED=true
                 - INSTALL_OPCACHE=true
                 - INSTALL_EXIF=true
+        labels:
+            io.rancher.container.pull_image: always
         environment:
             - PHP_IDE_CONFIG=serverName=$VIRTUAL_HOST_MAIN
         volumes_from:
-            - applications
+            - workspace
         expose:
             - "9000"
         links:
@@ -75,9 +72,11 @@ services:
     nginx:
         restart: always
         build:
-            context: ./nginx
+            context: nginx
+        labels:
+            io.rancher.container.pull_image: always
         volumes_from:
-            - applications
+            - workspace
         volumes:
             - ./nginx/bx:/etc/nginx/bx
             - ./nginx/certs:/etc/nginx/ssl
@@ -87,6 +86,8 @@ services:
             - nginx_logs:/var/log/nginx
         links:
             - php-fpm
+        ports:
+            - "81:80"
         environment:
             - VIRTUAL_HOST=$VIRTUAL_HOST
 
@@ -95,11 +96,11 @@ services:
 
     memcached:
         restart: always
-        build: ./memcached
+        build: memcached
+        labels:
+            io.rancher.container.pull_image: always
         volumes:
             - memcached:/var/lib/memcached
-        ports:
-            - "11211:11211"
 
 
 ### Volumes Setup ###########################################
