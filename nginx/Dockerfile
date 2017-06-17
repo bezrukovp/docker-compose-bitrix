@@ -30,7 +30,7 @@ RUN addgroup -g $PGID -S bitrix && \
 # Install base apps & Nginx Build:
 #####################################
 
-RUN apk --no-cache add openssl-dev pcre-dev zlib-dev wget build-base ca-certificates mc && \
+RUN apk -U --no-cache add openssl-dev pcre-dev zlib-dev linux-headers wget build-base ca-certificates mc && \
     mkdir -p /tmp/src /usr/local/sbin && \
     cd /tmp/src && \
     wget https://github.com/wandenberg/nginx-push-stream-module/archive/${NGINX_PUSH_STREAM_MODULE_VERSION}.tar.gz && \
@@ -40,6 +40,7 @@ RUN apk --no-cache add openssl-dev pcre-dev zlib-dev wget build-base ca-certific
     wget http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz && \
     tar -zxf nginx-${NGINX_VERSION}.tar.gz && \
     cd /tmp/src/nginx-${NGINX_VERSION} && \
+    mkdir -p /var/cache/nginx && \
     ./configure \
         --prefix=/etc/nginx \
         --sbin-path=/usr/sbin/nginx \
@@ -81,7 +82,7 @@ RUN apk --no-cache add openssl-dev pcre-dev zlib-dev wget build-base ca-certific
         --with-stream_ssl_module \
         --with-stream_ssl_preread_module \
         --add-module=/usr/local/sbin/nginx-push-stream-module-${NGINX_PUSH_STREAM_MODULE_VERSION} \
-        --add-module=/usr/local/sbin/headers-more-nginx-module && \
+        --add-module=/usr/local/sbin/headers-more-nginx-module-master && \
     make && \
     make install && \
     apk del build-base && \
