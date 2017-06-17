@@ -4,19 +4,13 @@
 #--------------------------------------------------------------------------
 #
 
-FROM phusion/baseimage:latest
+FROM alpine:latest
 
 MAINTAINER Pavel Bezrukov <bezrukov.ps@gmail.com>
 
-RUN DEBIAN_FRONTEND=noninteractive
-RUN locale-gen ru_RU.UTF-8
-
-ENV LANGUAGE=ru_RU.UTF-8
-ENV LC_ALL=ru_RU.UTF-8
-ENV LC_CTYPE=ru_RU.UTF-8
-ENV LANG=ru_RU.UTF-8
 ENV TERM xterm
 
+ARG NGINX_VERSION=1.12.0
 ARG NGINX_PUSH_STREAM_MODULE_VERSION=0.4.1
 
 
@@ -27,8 +21,8 @@ ARG NGINX_PUSH_STREAM_MODULE_VERSION=0.4.1
 # Add a non-root user to prevent files being created with root permissions on host machine.
 ARG PUID=1000
 ARG PGID=1000
-RUN groupadd -g $PGID bitrix && \
-    useradd -u $PUID -g bitrix -m bitrix -s /bin/bash && \
+RUN addgroup -g $PGID -S bitrix && \
+    adduser -u $PUID -D -S -G bitrix bitrix && \
     echo "bitrix:$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13)" | chpasswd
 
 
@@ -36,29 +30,70 @@ RUN groupadd -g $PGID bitrix && \
 # Install base apps & Nginx Build:
 #####################################
 
-ADD ./sources.list.d/* /etc/apt/sources.list.d/
-
-RUN apt-get update && apt-get install -y sudo git curl vim nano mc rsync tar wget \
-    iputils-ping telnet dnsutils tcpdump htop debian-keyring \
-    dpkg-dev build-essential zlib1g-dev libpcre3 libpcre3-dev && \
-    mkdir -p /opt/nginx/ && \
-    cd /opt/nginx/ && \
+RUN apk --no-cache add openssl-dev pcre-dev zlib-dev wget build-base ca-certificates mc && \
+    mkdir -p /tmp/src /usr/local/sbin && \
+    cd /tmp/src && \
     wget https://github.com/wandenberg/nginx-push-stream-module/archive/${NGINX_PUSH_STREAM_MODULE_VERSION}.tar.gz && \
-    tar -zxf ${NGINX_PUSH_STREAM_MODULE_VERSION}.tar.gz && \
-    git clone https://github.com/openresty/headers-more-nginx-module.git
-RUN wget https://nginx.ru/keys/nginx_signing.key && apt-key add nginx_signing.key && rm nginx_signing.key && \
-    echo "install key" && \
-    apt-get update && echo "success update" && apt-get source nginx && echo "success source" && \
-    apt-get build-dep -y nginx && \
-    cd nginx-*/debian && \
-    sed -i.orig 's#--with-cc-opt# --add-module=/opt/nginx/nginx-push-stream-module-${NGINX_PUSH_STREAM_MODULE_VERSION} --add-module=/opt/nginx/headers-more-nginx-module --with-cc-opt#g' rules && cd .. && \
-    dpkg-buildpackage -b && cd .. && \
-    dpkg -i nginx_*.deb && \
+    tar -zxf ${NGINX_PUSH_STREAM_MODULE_VERSION}.tar.gz -C /usr/local/sbin && \
+    wget https://github.com/openresty/headers-more-nginx-module/archive/master.tar.gz && \
+    tar -zxf master.tar.gz -C /usr/local/sbin && \
+    wget http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz && \
+    tar -zxf nginx-${NGINX_VERSION}.tar.gz && \
+    cd /tmp/src/nginx-${NGINX_VERSION} && \
+    ./configure \
+        --prefix=/etc/nginx \
+        --sbin-path=/usr/sbin/nginx \
+        --modules-path=/usr/lib/nginx/modules \
+        --conf-path=/etc/nginx/nginx.conf \
+        --error-log-path=/var/log/nginx/error.log \
+        --http-log-path=/var/log/nginx/access.log \
+        --pid-path=/var/run/nginx.pid \
+        --lock-path=/var/run/nginx.lock \
+        --http-client-body-temp-path=/var/cache/nginx/client_temp \
+        --http-proxy-temp-path=/var/cache/nginx/proxy_temp \
+        --http-fastcgi-temp-path=/var/cache/nginx/fastcgi_temp \
+        --http-uwsgi-temp-path=/var/cache/nginx/uwsgi_temp \
+        --http-scgi-temp-path=/var/cache/nginx/scgi_temp \
+        --user=bitrix \
+        --group=bitrix \
+        --with-compat \
+        --with-file-aio \
+        --with-threads \
+        --with-http_addition_module \
+        --with-http_auth_request_module \
+        --with-http_dav_module \
+        --with-http_flv_module \
+        --with-http_gunzip_module \
+        --with-http_gzip_static_module \
+        --with-http_mp4_module \
+        --with-http_random_index_module \
+        --with-http_realip_module \
+        --with-http_secure_link_module \
+        --with-http_slice_module \
+        --with-http_ssl_module \
+        --with-http_stub_status_module \
+        --with-http_sub_module \
+        --with-http_v2_module \
+        --with-mail \
+        --with-mail_ssl_module \
+        --with-stream \
+        --with-stream_realip_module \
+        --with-stream_ssl_module \
+        --with-stream_ssl_preread_module \
+        --add-module=/usr/local/sbin/nginx-push-stream-module-${NGINX_PUSH_STREAM_MODULE_VERSION} \
+        --add-module=/usr/local/sbin/headers-more-nginx-module && \
+    make && \
+    make install && \
+    apk del build-base && \
+    rm -rf /tmp/src && \
+    rm -rf /var/cache/apk/* && \
     ln -sf /dev/stdout /var/log/nginx/access.log && \
     ln -sf /dev/stderr /var/log/nginx/error.log && \
     nginx -V
 
 ADD ./bitrixenv_error/ /var/www/bitrixenv_error/
+
+WORKDIR /home/bitrix/www
 
 CMD ["nginx", "-g", "daemon off;"]
 

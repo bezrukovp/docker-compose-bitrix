@@ -1,4 +1,4 @@
-FROM memcached:latest
+FROM memcached:alpine
 
 MAINTAINER Pavel Bezrukov <bezrukov.ps@gmail.com>
 
