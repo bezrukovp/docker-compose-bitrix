@@ -17,6 +17,7 @@ services:
     restart: unless-stopped
     volumes:
       - app:/home/bitrix/www
+      - developer-ssh:/home/developer/.ssh
     networks:
       - default
 
@@ -88,4 +89,6 @@ volumes:
   certs:
     driver: "local"
   memcached:
+    driver: "local"
+  developer-ssh:
     driver: "local"

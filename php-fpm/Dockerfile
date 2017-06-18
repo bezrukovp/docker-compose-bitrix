@@ -24,7 +24,11 @@ RUN addgroup -g $PGID -S bitrix && \
 #--------------------------------------------------------------------------
 #
 
-RUN rm /usr/local/etc/php-fpm.d/www.conf
+RUN rm /usr/local/etc/php-fpm.d/www.conf && \
+    mkdir -p /var/tmp/php_sessions/www && \
+    chown bitrix:adm /var/tmp/php_sessions/www && \
+    mkdir -p /var/tmp/php_upload/www && \
+    chown bitrix:adm /var/tmp/php_upload/www
 
 COPY ./conf.d/ /usr/local/etc/php/conf.d/
 COPY ./fpm.d/ /usr/local/etc/php-fpm.d/

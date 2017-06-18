@@ -14,6 +14,7 @@ MAINTAINER Pavel Bezrukov <bezrukov.ps@gmail.com>
 #--------------------------------------------------------------------------
 #
 
+RUN dpkg-reconfigure openssh-server
 
 #####################################
 # Crontab
