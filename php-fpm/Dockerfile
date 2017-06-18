@@ -38,13 +38,15 @@ COPY ./fpm.d/ /usr/local/etc/php-fpm.d/
 # xDebug:
 #####################################
 
-ARG INSTALL_XDEBUG=false
-RUN if [ ${INSTALL_XDEBUG} = true ]; then \
-    apt-get update && apt-get install -y php7.1-xdebug \
-;fi
-
 # Copy xdebug configration for remote debugging
 COPY ./xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
+
+ARG INSTALL_XDEBUG=false
+RUN if [ ${INSTALL_XDEBUG} = true ]; then \
+    pecl install xdebug && \
+    docker-php-ext-enable xdebug && \
+    sed -i "s/xdebug\.remote_enable=0/xdebug.remote_enable=1/" /usr/local/etc/php/conf.d/xdebug.ini \
+;fi
 
 
 #
@@ -52,6 +54,12 @@ COPY ./xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
 # Final Touch
 #--------------------------------------------------------------------------
 #
+
+# Clean up
+RUN \
+    docker-php-source delete && \
+    apk del .build-deps && \
+    rm -rf /tmp/* /var/cache/apk/*
 
 # Set default work directory
 WORKDIR /home/bitrix/www

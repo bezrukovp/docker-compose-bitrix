@@ -31,7 +31,8 @@ RUN chmod -R 644 /etc/cron.d
 
 ARG INSTALL_XDEBUG=false
 RUN if [ ${INSTALL_XDEBUG} = true ]; then \
-    apt-get update && apt-get install -y php7.1-xdebug \
+    apt-get update && apt-get install -y php7.1-xdebug && \
+    echo "GatewayPorts=clientspecified" >> /etc/ssh/sshd_config \
 ;fi
 
 # Copy xdebug configration for remote debugging
