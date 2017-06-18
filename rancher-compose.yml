@@ -2,11 +2,42 @@ version: '2'
 services:
   workspace:
     scale: 1
+    health_check:
+      port: 22
+      interval: 2000
+      initializing_timeout: 60000
+      unhealthy_threshold: 3
+      strategy: none
+      healthy_threshold: 2
+      response_timeout: 2000
   php-fpm:
     scale: 1
+    health_check:
+      port: 9000
+      interval: 2000
+      initializing_timeout: 60000
+      unhealthy_threshold: 3
+      strategy: none
+      healthy_threshold: 2
+      response_timeout: 2000
   nginx:
     scale: 1
+    health_check:
+      port: 80
+      request_line: GET / HTTP/1.0
+      interval: 2000
+      initializing_timeout: 60000
+      unhealthy_threshold: 3
+      strategy: none
+      healthy_threshold: 2
+      response_timeout: 2000
   memcached:
     scale: 1
-
-
+    health_check:
+      port: 11211
+      interval: 2000
+      initializing_timeout: 60000
+      unhealthy_threshold: 3
+      strategy: none
+      healthy_threshold: 2
+      response_timeout: 2000

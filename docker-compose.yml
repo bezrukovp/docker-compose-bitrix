@@ -15,6 +15,8 @@ services:
     tty: true
     stdin_open: true
     restart: unless-stopped
+    environment:
+      - PHP_IDE_CONFIG=serverName=$VIRTUAL_HOST_MAIN
     volumes:
       - app:/home/bitrix/www
       - developer-ssh:/home/developer/.ssh
@@ -36,8 +38,6 @@ services:
     restart: unless-stopped
     volumes_from:
       - workspace
-    expose:
-      - "9000"
     links:
       - workspace
       - memcached
@@ -63,8 +63,6 @@ services:
       - certs:/etc/nginx/ssl
     links:
       - php-fpm
-    ports:
-      - "81:80"
     environment:
       - VIRTUAL_HOST=$VIRTUAL_HOST
 
