@@ -58,6 +58,8 @@ services:
     restart: unless-stopped
     volumes_from:
       - workspace
+    volumes:
+      - certs:/etc/nginx/ssl
     links:
       - php-fpm
     ports:
@@ -82,6 +84,8 @@ services:
 
 volumes:
   app:
+    driver: "local"
+  certs:
     driver: "local"
   memcached:
     driver: "local"

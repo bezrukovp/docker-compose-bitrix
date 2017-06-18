@@ -24,6 +24,8 @@ RUN addgroup -g $PGID -S bitrix && \
 #--------------------------------------------------------------------------
 #
 
+RUN rm /usr/local/etc/php-fpm.d/www.conf
+
 COPY ./conf.d/ /usr/local/etc/php/conf.d/
 COPY ./fpm.d/ /usr/local/etc/php-fpm.d/
 
@@ -50,8 +52,7 @@ COPY ./xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
 # Set default work directory
 WORKDIR /home/bitrix/www
 
-USER bitrix
+EXPOSE 9000
 
 CMD ["php-fpm"]
 
-EXPOSE 9000
