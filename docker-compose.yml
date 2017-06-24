@@ -18,7 +18,7 @@ services:
     environment:
       - PHP_IDE_CONFIG=serverName=$VIRTUAL_HOST_MAIN
     volumes:
-      - app:/home/bitrix/www
+      - app:/home/bitrix
       - developer-ssh:/home/developer/.ssh
     networks:
       - default

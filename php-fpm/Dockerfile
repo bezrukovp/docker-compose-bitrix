@@ -62,7 +62,7 @@ RUN \
     rm -rf /tmp/* /var/cache/apk/*
 
 # Set default work directory
-WORKDIR /home/bitrix/www
+WORKDIR /home/bitrix
 
 EXPOSE 9000
 
