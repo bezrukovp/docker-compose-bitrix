@@ -14,7 +14,24 @@ MAINTAINER Pavel Bezrukov <bezrukov.ps@gmail.com>
 #--------------------------------------------------------------------------
 #
 
-RUN dpkg-reconfigure openssh-server
+#####################################
+# ssh:
+#####################################
+
+RUN rm -f /etc/service/sshd/down && \
+    dpkg-reconfigure openssh-server && \
+
+    cat /dev/zero | ssh-keygen -q -N "" && \
+    cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys && \
+    chmod 644 /root/.ssh/authorized_keys /root/.ssh/id_rsa.pub && \
+    chmod 400 /root/.ssh/id_rsa && \
+
+    cat /dev/zero | sudo -u developer ssh-keygen -q -N "" && \
+    cat /home/developer/.ssh/id_rsa.pub >> /home/developer/.ssh/authorized_keys && \
+    cat /root/.ssh/id_rsa.pub >> /home/developer/.ssh/authorized_keys && \
+    chmod 644 /home/developer/.ssh/authorized_keys /home/developer/.ssh/id_rsa.pub && \
+    chmod 400 /home/developer/.ssh/id_rsa
+
 
 #####################################
 # Crontab
