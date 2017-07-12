@@ -1,0 +1,15 @@
+
+# SSL enabled server for reading personal channels
+server {
+    listen 8894;
+    server_name _;
+    include bx/conf/ssl.conf;
+
+    # Include error handlers
+    include bx/conf/errors.conf;
+
+    # Include im subscrider handlers
+    include bx/conf/im_subscrider.conf;
+
+    location ^~ / { deny all; }
+}

@@ -7,7 +7,8 @@ services:
 
   workspace:
     build:
-      context: workspace
+      context: .
+      dockerfile: ./workspace/Dockerfile
       args:
         - INSTALL_XDEBUG=${INSTALL_XDEBUG}
     labels:
@@ -28,7 +29,7 @@ services:
 
   php-fpm:
     build:
-      context: php-fpm
+      dockerfile: ./php-fpm/Dockerfile
       args:
         - INSTALL_XDEBUG=${INSTALL_XDEBUG}
     labels:

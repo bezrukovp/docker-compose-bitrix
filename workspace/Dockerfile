@@ -14,6 +14,11 @@ MAINTAINER Pavel Bezrukov <bezrukov.ps@gmail.com>
 #--------------------------------------------------------------------------
 #
 
+ADD ./php-fpm/conf.d/ /etc/php/7.1/mods-available/
+ADD ./php-fpm/ssmtp /etc/ssmtp
+
+RUN ln -s /etc/php/7.1/mods-available/bitrixenv.ini /etc/php/7.1/cli/conf.d/
+
 #####################################
 # ssh:
 #####################################
@@ -38,7 +43,7 @@ RUN rm -f /etc/service/sshd/down && \
 #####################################
 USER root
 
-COPY ./crontab /etc/cron.d
+ADD ./workspace/crontab /etc/cron.d
 RUN chmod -R 644 /etc/cron.d
 
 
@@ -47,12 +52,13 @@ RUN chmod -R 644 /etc/cron.d
 #####################################
 
 # Copy xdebug configration for remote debugging
-COPY ./xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
+ADD ./workspace/xdebug.ini /etc/php/7.1/mods-available/xdebug-ext.ini
 
 ARG INSTALL_XDEBUG=false
 RUN if [ ${INSTALL_XDEBUG} = true ]; then \
     apt-get update && apt-get install -y php7.1-xdebug && \
-    sed -i "s/xdebug\.remote_enable=0/xdebug.remote_enable=1/" /usr/local/etc/php/conf.d/xdebug.ini \
+    sed -i "s/xdebug\.remote_enable=0/xdebug.remote_enable=1/" /etc/php/7.1/mods-available/xdebug-ext.ini && \
+    ln -s /etc/php/7.1/mods-available/xdebug-ext.ini /etc/php/7.1/cli/conf.d/ && \
     echo "GatewayPorts=clientspecified" >> /etc/ssh/sshd_config \
 ;fi
 

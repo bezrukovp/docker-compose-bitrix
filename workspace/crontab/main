@@ -1,1 +1,1 @@
-
+#*/1 * * * * developer /usr/bin/php -f /home/bitrix/www/public_html/local/php_interface/cron_events.php >> /home/bitrix/www/public_html/local/php_interface/logs/cron_events.log 2>&1

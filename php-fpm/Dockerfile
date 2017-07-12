@@ -14,8 +14,7 @@ ARG PUID=1000
 ARG PGID=1000
 RUN addgroup -g $PGID -S bitrix && \
     adduser -u $PUID -D -S -G bitrix bitrix && \
-    echo "bitrix:$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13)" | chpasswd && \
-    chown bitrix:adm /var/log/msmtp
+    echo "bitrix:$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13)" | chpasswd
 
 
 #
@@ -30,8 +29,9 @@ RUN rm /usr/local/etc/php-fpm.d/www.conf && \
     mkdir -p /var/tmp/php_upload/www && \
     chown bitrix:adm /var/tmp/php_upload/www
 
-COPY ./conf.d/ /usr/local/etc/php/conf.d/
-COPY ./fpm.d/ /usr/local/etc/php-fpm.d/
+ADD ./php-fpm/ssmtp /etc/ssmtp
+ADD ./php-fpm/conf.d/ /usr/local/etc/php/conf.d/
+ADD ./php-fpm/fpm.d/ /usr/local/etc/php-fpm.d/
 
 
 #####################################
@@ -39,7 +39,7 @@ COPY ./fpm.d/ /usr/local/etc/php-fpm.d/
 #####################################
 
 # Copy xdebug configration for remote debugging
-COPY ./xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
+COPY ./php-fpm/xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
 
 ARG INSTALL_XDEBUG=false
 RUN if [ ${INSTALL_XDEBUG} = true ]; then \
