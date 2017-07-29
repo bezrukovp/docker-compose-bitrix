@@ -1,0 +1,10 @@
+[program:php-worker]
+command=/usr/bin/env php /home/bitrix/www/public_html/local/commands/worker.php
+numprocs=1
+directory=/home/bitrix/www/public_html
+stdout_logfile = /var/log/supervisor/%(program_name)s.log
+stderr_logfile = /var/log/supervisor/%(program_name)s.log
+autostart=true
+autorestart=true
+user=developer
+stopsignal=KILL

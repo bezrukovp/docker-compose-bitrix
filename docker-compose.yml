@@ -29,6 +29,7 @@ services:
 
   php-fpm:
     build:
+      context: .
       dockerfile: ./php-fpm/Dockerfile
       args:
         - INSTALL_XDEBUG=${INSTALL_XDEBUG}
@@ -37,8 +38,8 @@ services:
     tty: true
     stdin_open: true
     restart: unless-stopped
-    volumes_from:
-      - workspace
+    volumes:
+      - app:/home/bitrix
     links:
       - workspace
       - memcached
@@ -51,17 +52,16 @@ services:
 ### Nginx Server Container ##################################
 
   nginx:
-    build:
-      context: nginx
+    build: nginx
     labels:
       io.rancher.container.pull_image: always
     tty: true
     stdin_open: true
     restart: unless-stopped
-    volumes_from:
-      - workspace
     volumes:
+      - app:/home/bitrix
       - certs:/etc/nginx/ssl
+      - ${PWD}/nginx/bx/site_enabled:/etc/nginx/bx/site_enabled
     links:
       - php-fpm
     environment:
@@ -71,8 +71,7 @@ services:
 ### Memcached Container #####################################
 
   memcached:
-    build:
-      context: memcached
+    build: memcached
     labels:
       io.rancher.container.pull_image: always
     restart: unless-stopped
